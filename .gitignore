@@ -1,7 +1,3 @@
 .DS_Store
 env/
-apac_esg*
-namer_esg*
-emea_esg*
-china_esg*
-gsa*
+accounts/

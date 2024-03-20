@@ -6,6 +6,12 @@ A python script that analyse whether a web site has GTM scripts installed. It wi
 
 ## How to Install
 
+Clone the repository
+
+```
+git clone https://github.com/otyeung/gtm_checker.git
+```
+
 With Python 3.x, create virtual environment and activate it :
 
 ```
