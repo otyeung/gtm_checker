@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 import re
 import time
 from multiprocessing import Pool
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 def extract_js_urls(html_content, base_url):
     """Extract JavaScript file URLs from HTML content."""
@@ -32,6 +34,9 @@ def search_for_google_tags(content):
 
     return gtm_detected
 
+# ß
+
+
 def crawl_website(domain):
     """Crawl a website and search for Google Tag Manager tags."""
     try:
@@ -41,7 +46,16 @@ def crawl_website(domain):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36'
         }
 
-        response = requests.get(website_url, headers=headers, allow_redirects=True, timeout=10)  # Allow redirects and set timeout to 10 seconds
+        # Set timeout to 20 seconds
+        timeout = 20
+
+        # Retry mechanism with 3 retries
+        retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+        session = requests.Session()
+        session.mount('http://', HTTPAdapter(max_retries=retries))
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        response = session.get(website_url, headers=headers, allow_redirects=True, timeout=timeout)  # Allow redirects and set timeout
         response.raise_for_status()
 
         base_url = response.url.split('//')[0] + '//' + response.url.split('//')[1].split('/')[0]
@@ -53,7 +67,7 @@ def crawl_website(domain):
         # Extract JavaScript URLs from HTML content and search for Google Tag Manager tags in them
         js_urls = extract_js_urls(html_content, base_url)
         for js_url in js_urls:
-            js_response = requests.get(js_url, headers=headers, timeout=10)
+            js_response = session.get(js_url, headers=headers, timeout=timeout)
             js_response.raise_for_status()
             js_content = js_response.text
             if not gtm_detected:
@@ -65,13 +79,13 @@ def crawl_website(domain):
         return gtm_use
 
     except requests.exceptions.HTTPError as e:
-        return 'n/a'
+        return 'HTTPError', str(e)
     except requests.exceptions.ConnectionError as e:
-        return 'n/a'
+        return 'ConnectionError', str(e)
     except requests.exceptions.Timeout:
-        return 'n/a'
+        return 'TimeoutError', 'Request timed out'
     except Exception as e:
-        return 'n/a'
+        return 'Error', str(e)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
